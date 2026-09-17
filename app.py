@@ -1,86 +1,54 @@
 import streamlit as st
-
-st.set_page_config(page_title="Nyiko CRT - 4H Reader", page_icon="👑", layout="centered")
-
-st.markdown("<h1 style='text-align:center;color:#FFD700;'>👑 Nyiko CRT - 4H Reader</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>4H with Safety Filter</p>", unsafe_allow_html=True)
-
-timeframe = st.selectbox("Select Timeframe you use:", ["4H (Your Style)", "H1", "D1 - Daily"])
-instrument = st.selectbox("Instrument:", ["XAUUSD (Gold)", "NAS100 / US30", "Forex Majors"])
-
-col1, col2 = st.columns(2)
-with col1:
-    high = st.number_input(f"{timeframe} High", value=0.0, format="%.2f")
-with col2:
-    low = st.number_input(f"{timeframe} Low", value=0.0, format="%.2f")
-
-current = st.number_input("Current Price", value=0.0, format="%.2f")
-
-if high > 0 and low > 0 and current > 0:
-    if high <= low:
-        st.error("High must be bigger than Low!")
+st.set_page_config(page_title="Nyiko CRT - 4H", page_icon="👑", layout="centered")
+st.markdown("<h1 style='text-align:center;color:#FFD700;'>👑 Nyiko CRT 4H</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Tells you BUY or SELL + When</p>", unsafe_allow_html=True)
+timeframe = st.selectbox("Timeframe:", ["4H (Your Style)", "H1", "D1"])
+instrument = st.selectbox("Pair:", ["XAUUSD", "NAS100", "US30", "GBPUSD", "EURUSD"])
+c1, c2 = st.columns(2)
+with c1:
+    high = st.number_input("Candle High", value=0.0, format="%.2f")
+with c2:
+    low = st.number_input("Candle Low", value=0.0, format="%.2f")
+current = st.number_input("Current Price NOW", value=0.0, format="%.2f")
+if high > 0 and low > 0 and current > 0 and high > low:
+    rng = high - low
+    fifty = low + rng*0.5
+    q25 = low + rng*0.25
+    q75 = low + rng*0.75
+    if (instrument=="XAUUSD" and rng<7) or (instrument in ["NAS100","US30"] and rng<70):
+        st.warning("### ⛔ NO CRT TODAY - Range too small, DON'T TRADE")
+        st.stop()
+    st.divider()
+    st.write(f"**50%: {fifty:.2f} | 25%: {q25:.2f} | 75%: {q75:.2f}**")
+    st.divider()
+    if current <= q25:
+        st.success(f"## 🟢🟢 STRONG BUY NOW - {instrument}")
+        st.success(f"Price at Discount (Below 25%)")
+        st.write(f"👉 ACTION: BUY NOW at {current}")
+        st.write(f"🎯 TP1: {fifty:.2f}")
+        st.write(f"🎯 TP2: {high:.2f}")
+        st.write(f"🛑 SL: {low - (rng*0.1):.2f}")
+        st.balloons()
+    elif current < fifty and current > q25:
+        st.success(f"## 🟢 BUY BIAS - Wait M15")
+        st.write(f"👉 ACTION: Look for BUY around {current}")
+        st.write(f"🎯 TP: {fifty:.2f} -> {high:.2f}")
+        st.write(f"🛑 SL: Below {low:.2f}")
+    elif current >= q75:
+        st.error(f"## 🔴🔴 STRONG SELL NOW - {instrument}")
+        st.error(f"Price at Premium (Above 75%)")
+        st.write(f"👉 ACTION: SELL NOW at {current}")
+        st.write(f"🎯 TP1: {fifty:.2f}")
+        st.write(f"🎯 TP2: {low:.2f}")
+        st.write(f"🛑 SL: {high + (rng*0.1):.2f}")
+    elif current > fifty and current < q75:
+        st.error(f"## 🔴 SELL BIAS - Wait M15")
+        st.write(f"👉 ACTION: Look for SELL around {current}")
+        st.write(f"🎯 TP: {fifty:.2f} -> {low:.2f}")
+        st.write(f"🛑 SL: Above {high:.2f}")
     else:
-        range_size = high - low
-        
-        # SAFETY FILTER
-        is_no_crt = False
-        if instrument == "XAUUSD (Gold)" and range_size < 7:
-            is_no_crt = True
-            min_range = 7
-        elif instrument == "NAS100 / US30" and range_size < 70:
-            is_no_crt = True
-            min_range = 70
-        elif instrument == "Forex Majors" and range_size < 0.0008 * current:
-            is_no_crt = True
-        
-        st.divider()
-        
-        if is_no_crt:
-            st.warning(f"### ⛔ NO CRT - NO TRADE")
-            st.write(f"Range is only {range_size:.2f} - too small!")
-            st.write(f"Wait for next {timeframe} candle. Market is choppy.")
-            st.info("Pro traders skip this. Save your money!")
-        else:
-            fifty = low + (range_size * 0.5)
-            quarter = low + (range_size * 0.25)
-            three_quarter = low + (range_size * 0.75)
-            
-            st.subheader("📊 CRT Levels")
-            c1, c2, c3 = st.columns(3)
-            c1.metric("25%", f"{quarter:.2f}")
-            c2.metric("50% - KEY", f"{fifty:.2f}")
-            c3.metric("75%", f"{three_quarter:.2f}")
-
-            st.divider()
-            if current < fifty:
-                st.success(f"### 🟢 BUY BIAS - {timeframe}")
-                st.write(f"**Target 1:** {fifty:.2f}")
-                st.write(f"**Target 2:** {high:.2f}")
-                st.write(f"**SL:** Below {low:.2f}")
-            else:
-                st.error(f"### 🔴 SELL BIAS - {timeframe}")
-                st.write(f"**Target 1:** {fifty:.2f}")
-                st.write(f"**Target 2:** {low:.2f}")
-                st.write(f"**SL:** Above {high:.2f}")
-
-st.divider()
-st.caption("Nyiko CRT | Not financial advice")
-        st.divider()
-        if current < fifty:
-            st.success(f"### 🟢 BUY BIAS - {timeframe}")
-            st.write(f"**Entry:** Around {current}")
-            st.write(f"**Target 1:** {fifty:.2f} (50%)")
-            st.write(f"**Target 2:** {high:.2f} (High)")
-            st.write(f"**Stop Loss:** Below {low:.2f}")
-            st.info("Wait for M15/M5 bullish market structure / FVG before entering!")
-        else:
-            st.error(f"### 🔴 SELL BIAS - {timeframe}")
-            st.write(f"**Entry:** Around {current}")
-            st.write(f"**Target 1:** {fifty:.2f} (50%)")
-            st.write(f"**Target 2:** {low:.2f} (Low)")
-            st.write(f"**Stop Loss:** Above {high:.2f}")
-            st.info("Wait for M15/M5 bearish market structure / FVG before entering!")
-
-st.divider()
-st.link_button("💬 Join WhatsApp Signals", "https://wa.me/your_number", use_container_width=True)
-st.caption("Nyiko CRT | Not financial advice - For education only")
+        st.warning(f"### ⚠️ PRICE AT 50% - NO ENTRY YET")
+        st.write(f"Wait for price to go to 25% for BUY or 75% for SELL")
+    st.divider()
+    st.info(f"💡 4H Rule: Buy below 50%, Sell above 50%")
+st.caption("Nyiko | Education only")
