@@ -1,15 +1,12 @@
 import streamlit as st
-from PIL import Image
 
 st.set_page_config(page_title="Nyiko CRT - 4H Reader", page_icon="👑", layout="centered")
 
 st.markdown("<h1 style='text-align:center;color:#FFD700;'>👑 Nyiko CRT - 4H Reader</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Free Reader - 4H / H1 / D1</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>4H with Safety Filter</p>", unsafe_allow_html=True)
 
 timeframe = st.selectbox("Select Timeframe you use:", ["4H (Your Style)", "H1", "D1 - Daily"])
-
-st.divider()
-uploaded = st.file_uploader("Upload Chart Screenshot (Optional)", type=["png","jpg","jpeg"])
+instrument = st.selectbox("Instrument:", ["XAUUSD (Gold)", "NAS100 / US30", "Forex Majors"])
 
 col1, col2 = st.columns(2)
 with col1:
@@ -24,17 +21,50 @@ if high > 0 and low > 0 and current > 0:
         st.error("High must be bigger than Low!")
     else:
         range_size = high - low
-        fifty = low + (range_size * 0.5)
-        quarter = low + (range_size * 0.25)
-        three_quarter = low + (range_size * 0.75)
+        
+        # SAFETY FILTER
+        is_no_crt = False
+        if instrument == "XAUUSD (Gold)" and range_size < 7:
+            is_no_crt = True
+            min_range = 7
+        elif instrument == "NAS100 / US30" and range_size < 70:
+            is_no_crt = True
+            min_range = 70
+        elif instrument == "Forex Majors" and range_size < 0.0008 * current:
+            is_no_crt = True
         
         st.divider()
-        st.subheader("📊 CRT Levels")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("25%", f"{quarter:.2f}")
-        c2.metric("50% - KEY", f"{fifty:.2f}")
-        c3.metric("75%", f"{three_quarter:.2f}")
+        
+        if is_no_crt:
+            st.warning(f"### ⛔ NO CRT - NO TRADE")
+            st.write(f"Range is only {range_size:.2f} - too small!")
+            st.write(f"Wait for next {timeframe} candle. Market is choppy.")
+            st.info("Pro traders skip this. Save your money!")
+        else:
+            fifty = low + (range_size * 0.5)
+            quarter = low + (range_size * 0.25)
+            three_quarter = low + (range_size * 0.75)
+            
+            st.subheader("📊 CRT Levels")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("25%", f"{quarter:.2f}")
+            c2.metric("50% - KEY", f"{fifty:.2f}")
+            c3.metric("75%", f"{three_quarter:.2f}")
 
+            st.divider()
+            if current < fifty:
+                st.success(f"### 🟢 BUY BIAS - {timeframe}")
+                st.write(f"**Target 1:** {fifty:.2f}")
+                st.write(f"**Target 2:** {high:.2f}")
+                st.write(f"**SL:** Below {low:.2f}")
+            else:
+                st.error(f"### 🔴 SELL BIAS - {timeframe}")
+                st.write(f"**Target 1:** {fifty:.2f}")
+                st.write(f"**Target 2:** {low:.2f}")
+                st.write(f"**SL:** Above {high:.2f}")
+
+st.divider()
+st.caption("Nyiko CRT | Not financial advice")
         st.divider()
         if current < fifty:
             st.success(f"### 🟢 BUY BIAS - {timeframe}")
